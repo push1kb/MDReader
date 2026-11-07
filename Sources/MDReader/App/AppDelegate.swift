@@ -1,0 +1,25 @@
+import AppKit
+import MDReaderCore
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var keyboardShortcuts: KeyboardShortcuts?
+    private var hotKey: GlobalHotKey?
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.accessory)
+
+        let controller = PlayerController.shared
+        keyboardShortcuts = KeyboardShortcuts(controller: controller)
+        hotKey = GlobalHotKey { controller.togglePlayPause() }
+
+        if #unavailable(macOS 15.0) {
+            DispatchQueue.main.async(execute: closeReaderWindow)
+        }
+    }
+
+    private func closeReaderWindow() {
+        NSApp.windows
+            .filter { $0.identifier?.rawValue.hasPrefix(ReaderView.windowID) == true }
+            .forEach { $0.close() }
+    }
+}
