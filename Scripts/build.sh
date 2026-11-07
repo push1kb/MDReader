@@ -4,7 +4,7 @@
 #   ./Scripts/build.sh               build, open
 #   ./Scripts/build.sh --no-launch   build only
 #
-# Signs as the project's Release configuration does (Developer ID). Without that certificate,
+# Signs as the project does (automatically, with your Apple Development certificate). Without one,
 # run with ADHOC=1 for an ad-hoc signed build.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -15,6 +15,7 @@ if [[ "${ADHOC:-}" == 1 ]]; then
   OVERRIDES=(CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= ENABLE_HARDENED_RUNTIME=NO)
 fi
 
+echo "Building MDReader… (the first build compiles MLX and takes a few minutes)"
 xcodebuild -project MDReader.xcodeproj -scheme MDReader -configuration Release \
   -destination 'platform=macOS,arch=arm64' -derivedDataPath .build/xcode \
   -skipMacroValidation -skipPackagePluginValidation -quiet \
@@ -26,7 +27,10 @@ ditto .build/xcode/Build/Products/Release/MDReader.app dist/MDReader.app
 echo "Built dist/MDReader.app"
 
 if [[ "${1:-}" != "--no-launch" ]]; then
-  pkill -x MDReader 2>/dev/null || true
+  # Quit a running copy and wait until it's gone; opening while it shuts down fails with error -600.
+  if pkill -x MDReader; then
+    while pgrep -x MDReader >/dev/null; do sleep 0.2; done
+  fi
   open dist/MDReader.app
-  echo "Opened — look for the speaker icon in the menu bar."
+  echo "Opened — look for the MDReader page icon in the menu bar."
 fi

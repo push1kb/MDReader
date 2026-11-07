@@ -24,10 +24,12 @@ if ! xcrun notarytool history --keychain-profile "$PROFILE" >/dev/null 2>&1; the
 fi
 
 rm -rf "$ARCHIVE" dist/export "$APP"
+echo "Archiving… (a clean Release build of MLX takes a few minutes)"
 xcodebuild -project MDReader.xcodeproj -scheme MDReader -configuration Release \
   -destination 'generic/platform=macOS' -derivedDataPath .build/xcode \
   -skipMacroValidation -skipPackagePluginValidation -quiet \
   -archivePath "$ARCHIVE" archive
+echo "Exporting for Developer ID…"
 xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportPath dist/export \
   -exportOptionsPlist Scripts/ExportOptions.plist -quiet
 ditto dist/export/MDReader.app "$APP"
@@ -35,11 +37,12 @@ rm -rf dist/export
 
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$APP/Contents/Info.plist")"
 ZIP="dist/MDReader-$VERSION.zip"
-echo "Notarizing MDReader $VERSION…"
+echo "Notarizing MDReader $VERSION… (Apple usually takes a few minutes)"
 
 rm -f "$ZIP"
 ditto -c -k --keepParent "$APP" "$ZIP"
 xcrun notarytool submit "$ZIP" --keychain-profile "$PROFILE" --wait
+echo "Stapling the notarization ticket…"
 xcrun stapler staple "$APP"
 
 # Re-zip so the download carries the stapled ticket and opens offline.
@@ -48,6 +51,7 @@ ditto -c -k --keepParent "$APP" "$ZIP"
 spctl --assess --type execute --verbose "$APP"
 
 # The update feed. Sparkle's tools come with the Sparkle package that Xcode resolved.
+echo "Writing the update feed…"
 SPARKLE_BIN="$(find .build/xcode/SourcePackages/artifacts -type d -path '*Sparkle/bin' | head -1)"
 UPDATES="dist/updates"
 rm -rf "$UPDATES" && mkdir -p "$UPDATES"

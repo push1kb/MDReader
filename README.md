@@ -31,11 +31,11 @@ Everything happens on your Mac, and your text never leaves it.
 
 1. Download the latest `MDReader.zip` from the [Releases](../../releases) page.
 2. Unzip it and drag **MDReader** into your Applications folder.
-3. Open it. A speaker icon appears in the menu bar — MDReader has no Dock icon.
+3. Open it. MDReader's icon — a page with sound waves — appears in the menu bar; there's no Dock icon.
 
 ## Getting started
 
-1. Copy some Markdown, click the speaker icon in the menu bar and choose **Paste from Clipboard**.
+1. Copy some Markdown, click MDReader's icon in the menu bar and choose **Paste from Clipboard**.
 2. Press **Play**. The first time, MDReader downloads its voice model; after that it starts in seconds.
 3. Switch to **Speaking Now** to follow along, or keep working — playback continues while the panel is closed.
 
