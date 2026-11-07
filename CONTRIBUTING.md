@@ -12,19 +12,27 @@ non-obvious decisions worth knowing before you change playback or the menu bar p
   xcodebuild -downloadComponent MetalToolchain
   ```
 
-MDReader is a Swift package. Build it with `xcodebuild` (which `Scripts/build.sh` wraps) rather than
-`swift build`: only `xcodebuild` compiles MLX's Metal shaders, and without them the app can't speak.
+Open `MDReader.xcodeproj` and press Run. Xcode fetches the package dependencies on first open. Every
+view has a `#Preview`, and signing, capabilities and the version number are in the target's
+**Signing & Capabilities** and **General** tabs.
+
+To build from the terminal instead:
 
 ```bash
-./Scripts/build.sh              # build dist/MDReader.app and open it
+./Scripts/build.sh              # Release build into dist/MDReader.app, then open it
 ./Scripts/build.sh --no-launch  # build only
-open Package.swift              # work in Xcode; every view has a #Preview
+ADHOC=1 ./Scripts/build.sh      # without a Developer ID certificate
 ```
+
+Debug builds sign with an Apple Development certificate and Release builds with Developer ID, both
+for team K8AK936KU6. If you're building on another team, change the team in Signing & Capabilities.
 
 ## Testing
 
+Press ⌘U in Xcode, or:
+
 ```bash
-xcodebuild test -scheme MDReader -destination 'platform=macOS'
+xcodebuild test -project MDReader.xcodeproj -scheme MDReader -destination 'platform=macOS'
 ```
 
 The unit tests cover `MarkdownSanitizer`. Add a case there whenever you change what gets read.
@@ -39,35 +47,40 @@ dist/MDReader.app/Contents/MacOS/MDReader --selftest
 ```
 
 It prints a PASS or FAIL line per step and exits non-zero on any failure. Run it after touching
-anything in `Audio/` or `Player/`.
+anything in `Core/Audio/` or `Core/Player/`.
 
 ## Project structure
 
 ```
-Sources/MDReaderCore/              library: no UI, unit-tested
-  Markdown/   MarkdownSanitizer      Markdown → speakable paragraphs
-              MarkdownBlockParser    headings, lists, tables, quotes, code fences
-              InlineMarkdown         emphasis, links, images, HTML, entities
-              MarkdownPattern        the regexes
-  Speech/     SpeechEngine           text → AudioClip
-              KokoroEngine/Runtime   Kokoro-82M on MLX; downloads the model on first use
-              KokoroVoices           the 54 voices and their sample sentences
-  Audio/      AudioClip              in-memory mono audio; join, read, write
-              AudioCache             SHA-256 keyed CAF + JSON sidecar
-              AudioPlayback          AVAudioEngine graph: source → time-pitch → mixer
-              RenderState            samples + play position for the render thread
-              AudioExporter          CAF → AAC .m4a
-  Player/     PlayerController       observable state and transport (+Synthesis, +Preview)
-              VoicePreviewer         the Voice tab's Test button
-              NowPlayingBridge       media keys, Control Center, Now Playing
-  Settings/   SettingsKey, SpeechSettings
-Sources/MDReader/                  the app
-  App/        MDReaderApp, AppDelegate
-  Views/      Reader, Editor, SpeakingNow, Player, Voice, Glass
-  System/     KeyboardShortcuts, GlobalHotKey, ExportPanel, Updater (Sparkle)
-  Diagnostics/SelfTest, Screenshot   --selftest, --screenshot
-Tests/MDReaderCoreTests/           MarkdownSanitizer tests
+MDReader.xcodeproj                 the project: one app target, one test target
+MDReader/
+  Core/                              the engine; no UI
+    Markdown/   MarkdownSanitizer      Markdown → speakable paragraphs
+                MarkdownBlockParser    headings, lists, tables, quotes, code fences
+                InlineMarkdown         emphasis, links, images, HTML, entities
+                MarkdownPattern        the regexes
+    Speech/     SpeechEngine           text → AudioClip
+                KokoroEngine/Runtime   Kokoro-82M on MLX; downloads the model on first use
+                KokoroVoices           the 54 voices and their sample sentences
+    Audio/      AudioClip              in-memory mono audio; join, read, write
+                AudioCache             SHA-256 keyed CAF + JSON sidecar
+                AudioPlayback          AVAudioEngine graph: source → time-pitch → mixer
+                RenderState            samples + play position for the render thread
+                AudioExporter          CAF → AAC .m4a
+    Player/     PlayerController       observable state and transport (+Synthesis, +Preview)
+                VoicePreviewer         the Voice tab's Test button
+                NowPlayingBridge       media keys, Control Center, Now Playing
+    Settings/   SettingsKey, SpeechSettings
+  App/          MDReaderApp, AppDelegate
+  Views/        Reader, Editor, SpeakingNow, Player, Voice, Glass
+  System/       KeyboardShortcuts, GlobalHotKey, ExportPanel, Updater (Sparkle)
+  Diagnostics/  SelfTest, Screenshot   --selftest, --screenshot
+  Assets.xcassets, Info.plist, MDReader.entitlements, PrivacyInfo.xcprivacy
+MDReaderTests/                     MarkdownSanitizer tests
 ```
+
+The libraries — mlx-audio-swift (Kokoro on MLX), swift-huggingface and Sparkle — are in the
+project's **Package Dependencies**.
 
 **How a document becomes audio.** `PlayerController.play()` runs the text through
 `MarkdownSanitizer` to get paragraphs, hashes them with the voice into a cache key, and either loads
@@ -108,19 +121,19 @@ while the engine is stopped.
 ## Releasing
 
 MDReader ships as a sandboxed, hardened-runtime app signed with a Developer ID, notarized by Apple
-and updated with [Sparkle](https://sparkle-project.org). `Scripts/release.sh` does all of it and
-leaves `dist/MDReader-<version>.zip` plus the update feed `dist/appcast.xml`.
+and updated with [Sparkle](https://sparkle-project.org). `Scripts/release.sh` archives and exports it
+the way Xcode's Organizer does (`Scripts/ExportOptions.plist`), notarizes it, and leaves
+`dist/MDReader-<version>.zip` plus the update feed `dist/appcast.xml`.
 
-1. Bump `CFBundleShortVersionString` and `CFBundleVersion` in `Resources/Info.plist`.
+1. Bump **Version** and **Build** in the target's General tab.
 2. Once per machine, store notarization credentials (an app-specific password from
    appleid.apple.com):
 
    ```bash
-   xcrun notarytool store-credentials MDReader --apple-id <your Apple ID> --team-id <your team ID>
+   xcrun notarytool store-credentials MDReader --apple-id <your Apple ID> --team-id K8AK936KU6
    ```
 
-3. Run `./Scripts/release.sh`. It picks the first "Developer ID Application" certificate in your
-   keychain; set `SIGN_IDENTITY` or `NOTARY_PROFILE` to override.
+3. Run `./Scripts/release.sh`. Set `NOTARY_PROFILE` if you stored the credentials under another name.
 4. Publish with the `gh release create …` command it prints. The zip and `appcast.xml` must be
    attached to the **latest** release: the app looks for updates at
    `github.com/push1kb/MDReader/releases/latest/download/appcast.xml`.
@@ -133,21 +146,21 @@ Sparkle's tools come with the Sparkle package, in
 
 Sparkle runs sandboxed through its installer service: `Installer.xpc`, the two
 `mach-lookup` exceptions in the entitlements and `SUEnableInstallerLauncherService` in `Info.plist`
-belong together. The downloader service is removed because the app has network access itself.
+belong together. The app has network access itself, so Sparkle's downloader service goes unused.
 
-Ad-hoc builds from `Scripts/build.sh` leave the hardened runtime off, because its library
-validation refuses ad-hoc signed frameworks such as Sparkle. Release builds turn it on.
+`ADHOC=1` builds leave the hardened runtime off, because its library validation refuses ad-hoc
+signed frameworks such as Sparkle.
 
-Release resources live in `Resources/`: `Info.plist`, `MDReader.entitlements` (sandbox, outgoing
-network for the model download and update checks, user-selected files for export, Sparkle's
-installer), `PrivacyInfo.xcprivacy` and
-`AppIcon.icns`. The icon is drawn by `Design/render-icon.swift`; to change it, edit that and run:
+The entitlements allow the sandbox, outgoing network (model download and update checks),
+user-selected files (Export) and Sparkle's installer. The icon is drawn by
+`Design/render-icon.swift`; to change it, edit that and regenerate the asset catalog's images:
 
 ```bash
-swift Design/render-icon.swift Design/AppIcon-1024.png 1024
+for s in 16 32 128 256 512; do
+  swift Design/render-icon.swift MDReader/Assets.xcassets/AppIcon.appiconset/icon_${s}x${s}.png $s
+  swift Design/render-icon.swift MDReader/Assets.xcassets/AppIcon.appiconset/icon_${s}x${s}@2x.png $((s * 2))
+done
 ```
-
-then rebuild the `.icns` from an iconset with `iconutil` (16–512 pt at 1× and 2×).
 
 The README screenshot is drawn by the app itself:
 

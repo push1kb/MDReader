@@ -104,16 +104,11 @@ and delete `~/Library/Containers/com.push1kb.MDReader`; it downloads again the n
 
 ## Building from source
 
-You need Xcode 16 or later. Then:
+Open `MDReader.xcodeproj` in Xcode 16 or later and press Run. If the build reports a missing Metal
+Toolchain, install it once with `xcodebuild -downloadComponent MetalToolchain`.
 
-```bash
-./Scripts/build.sh
-```
-
-This builds `dist/MDReader.app` and opens it. If the build reports a missing Metal Toolchain, install it once with `xcodebuild -downloadComponent MetalToolchain`.
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for tests, how the code is organized, and what to know
-before changing playback.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for building from the terminal, tests, how the code is
+organized, and what to know before changing playback.
 
 ## Credits
 

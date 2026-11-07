@@ -3,3 +3,4 @@ dist/
 .swiftpm/
 *.profraw
 .DS_Store
+xcuserdata/

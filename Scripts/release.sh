@@ -1,42 +1,41 @@
 #!/usr/bin/env bash
-# Builds a release of MDReader: signed with your Developer ID, notarized by Apple and stapled,
-# zipped as dist/MDReader-<version>.zip, plus the Sparkle update feed dist/appcast.xml.
-# Publishing both to GitHub is left to you; the command is printed at the end.
+# Builds a release of MDReader the way Xcode's Organizer does — archive, then export for Developer ID —
+# then notarizes and staples it, and writes the Sparkle update feed. Leaves dist/MDReader-<version>.zip
+# and dist/appcast.xml; publishing them to GitHub is left to you (the command is printed at the end).
 #
 # One-time setup — store notarization credentials in your keychain (use an app-specific password
-# from appleid.apple.com):
+# from account.apple.com for the Apple ID of your developer team):
 #
-#   xcrun notarytool store-credentials MDReader --apple-id <your Apple ID> --team-id <your team ID>
+#   xcrun notarytool store-credentials MDReader --apple-id <your Apple ID> --team-id K8AK936KU6
 #
 # Updates are signed with the Sparkle EdDSA key in your keychain (created once with Sparkle's
 # generate_keys; its public half is SUPublicEDKey in Info.plist).
-#
-# Override the defaults with SIGN_IDENTITY and NOTARY_PROFILE.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-IDENTITY="${SIGN_IDENTITY:-$(security find-identity -v -p codesigning \
-  | grep -m1 -o '"Developer ID Application: [^"]*"' | tr -d '"' || true)}"
 PROFILE="${NOTARY_PROFILE:-MDReader}"
-VERSION="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Resources/Info.plist)"
 REPO="push1kb/MDReader"
+ARCHIVE="dist/MDReader.xcarchive"
 APP="dist/MDReader.app"
-ZIP="dist/MDReader-$VERSION.zip"
-
-if [[ -z "$IDENTITY" ]]; then
-  echo "No 'Developer ID Application' certificate found in your keychain." >&2
-  exit 1
-fi
-
-echo "Signing MDReader $VERSION as: $IDENTITY"
-SIGN_IDENTITY="$IDENTITY" ./Scripts/build.sh --no-launch
-codesign --verify --strict --deep "$APP"
 
 if ! xcrun notarytool history --keychain-profile "$PROFILE" >/dev/null 2>&1; then
-  echo "Signed, but not notarized: no notarytool profile named '$PROFILE'." >&2
-  echo "Run the one-time setup at the top of this script, then run it again." >&2
+  echo "No notarytool profile named '$PROFILE'. Run the one-time setup at the top of this script." >&2
   exit 1
 fi
+
+rm -rf "$ARCHIVE" dist/export "$APP"
+xcodebuild -project MDReader.xcodeproj -scheme MDReader -configuration Release \
+  -destination 'generic/platform=macOS' -derivedDataPath .build/xcode \
+  -skipMacroValidation -skipPackagePluginValidation -quiet \
+  -archivePath "$ARCHIVE" archive
+xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportPath dist/export \
+  -exportOptionsPlist Scripts/ExportOptions.plist -quiet
+ditto dist/export/MDReader.app "$APP"
+rm -rf dist/export
+
+VERSION="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$APP/Contents/Info.plist")"
+ZIP="dist/MDReader-$VERSION.zip"
+echo "Notarizing MDReader $VERSION…"
 
 rm -f "$ZIP"
 ditto -c -k --keepParent "$APP" "$ZIP"
@@ -48,7 +47,7 @@ rm -f "$ZIP"
 ditto -c -k --keepParent "$APP" "$ZIP"
 spctl --assess --type execute --verbose "$APP"
 
-# The update feed. Sparkle's tools come with the Sparkle package that xcodebuild resolved.
+# The update feed. Sparkle's tools come with the Sparkle package that Xcode resolved.
 SPARKLE_BIN="$(find .build/xcode/SourcePackages/artifacts -type d -path '*Sparkle/bin' | head -1)"
 UPDATES="dist/updates"
 rm -rf "$UPDATES" && mkdir -p "$UPDATES"
