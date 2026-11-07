@@ -38,19 +38,24 @@ xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportPath dist/export \
 ditto dist/export/MDReader.app "$APP"
 rm -rf dist/export
 
+# Without --norsrc/--noextattr, ditto stores extended attributes as "._" files in the zip. Finder
+# folds them back in, but other unzip tools write them into the app, which then fails Gatekeeper
+# ("unsealed contents present in the root directory of an embedded framework").
+zip_app() { ditto -c -k --norsrc --noextattr --noacl --keepParent "$APP" "$ZIP"; }
+
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$APP/Contents/Info.plist")"
 ZIP="dist/MDReader-$VERSION.zip"
 echo "Notarizing MDReader $VERSION… (Apple usually takes a few minutes)"
 
 rm -f "$ZIP"
-ditto -c -k --keepParent "$APP" "$ZIP"
+zip_app
 xcrun notarytool submit "$ZIP" --keychain-profile "$PROFILE" --wait
 echo "Stapling the notarization ticket…"
 xcrun stapler staple "$APP"
 
 # Re-zip so the download carries the stapled ticket and opens offline.
 rm -f "$ZIP"
-ditto -c -k --keepParent "$APP" "$ZIP"
+zip_app
 spctl --assess --type execute --verbose "$APP"
 
 # The update feed. Sparkle's tools come with the Sparkle package that Xcode resolved.
