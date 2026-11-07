@@ -32,6 +32,14 @@
     <true/>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>SUFeedURL</key>
+    <string>https://github.com/push1kb/MDReader/releases/latest/download/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>Pu+NGWf6yVUvIdLOCa2zxMaAVr3wPPhL9NSi479Ggcs=</string>
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
+    <key>SUEnableInstallerLauncherService</key>
+    <true/>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
 </dict>

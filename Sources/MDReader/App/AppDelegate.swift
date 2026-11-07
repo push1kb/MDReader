@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let controller = PlayerController.shared
         keyboardShortcuts = KeyboardShortcuts(controller: controller)
         hotKey = GlobalHotKey { controller.togglePlayPause() }
+        _ = Updater.shared
 
         if #unavailable(macOS 15.0) {
             DispatchQueue.main.async(execute: closeReaderWindow)

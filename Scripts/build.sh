@@ -28,14 +28,21 @@ cp Resources/Info.plist "$APP/Contents/"
 cp Resources/AppIcon.icns Resources/PrivacyInfo.xcprivacy "$APP/Contents/Resources/"
 # SwiftPM resource bundles, including MLX's compiled Metal library.
 cp -R "$PRODUCTS"/*.bundle "$APP/Contents/Resources/"
+# Sparkle, for updates. The app has network access itself, so Sparkle's downloader service isn't needed.
+mkdir -p "$APP/Contents/Frameworks"
+ditto "$PRODUCTS/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
+rm -rf "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 
-# Sign inside-out: resource bundles first, then the app with its sandbox entitlements.
+# Sign inside-out: Sparkle's helpers, the framework, resource bundles, then the app itself.
 # Ad-hoc builds skip the hardened runtime: its library validation rejects ad-hoc signed frameworks.
 sign() { codesign --force --timestamp=none --sign - "$@"; }
 if [[ "$SIGN_IDENTITY" != "-" ]]; then
   sign() { codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$@"; }
 fi
+SPARKLE="$APP/Contents/Frameworks/Sparkle.framework/Versions/B"
+sign "$SPARKLE/XPCServices/Installer.xpc" "$SPARKLE/Autoupdate" "$SPARKLE/Updater.app"
+sign "$APP/Contents/Frameworks/Sparkle.framework"
 for bundle in "$APP"/Contents/Resources/*.bundle; do sign "$bundle"; done
 sign --entitlements Resources/MDReader.entitlements "$APP"
 echo "Built $APP"

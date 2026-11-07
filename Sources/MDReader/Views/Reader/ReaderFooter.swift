@@ -25,6 +25,15 @@ struct ReaderFooter: View {
 
             Spacer()
 
+            Menu("More", systemImage: "ellipsis.circle") {
+                Button("Check for Updates…", action: Updater.shared.checkForUpdates)
+                    .disabled(!Updater.shared.canCheckForUpdates)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .labelStyle(.iconOnly)
+            .fixedSize()
+
             Text("Global: \(GlobalHotKey.displayName)")
                 .font(.caption)
                 .foregroundStyle(.secondary)

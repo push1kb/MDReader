@@ -5,11 +5,17 @@
     <!-- Everything MDReader stores lives in its own container. -->
     <key>com.apple.security.app-sandbox</key>
     <true/>
-    <!-- The one-time voice model download from Hugging Face. -->
+    <!-- The one-time voice model download, and update checks. -->
     <key>com.apple.security.network.client</key>
     <true/>
     <!-- Export Audio… writes where the user picks in the save panel. -->
     <key>com.apple.security.files.user-selected.read-write</key>
     <true/>
+    <!-- Sparkle's installer service, which replaces the app when an update is installed. -->
+    <key>com.apple.security.temporary-exception.mach-lookup.global-name</key>
+    <array>
+        <string>com.push1kb.MDReader-spks</string>
+        <string>com.push1kb.MDReader-spki</string>
+    </array>
 </dict>
 </plist>

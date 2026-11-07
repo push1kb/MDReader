@@ -11,6 +11,7 @@ let package = Package(
         // xcodebuild is required because plain `swift build` doesn't compile MLX's Metal shaders.
         .package(url: "https://github.com/Blaizzy/mlx-audio-swift.git", exact: "0.1.8"),
         .package(url: "https://github.com/huggingface/swift-huggingface.git", from: "0.8.1"),
+        .package(url: "https://github.com/sparkle-project/Sparkle.git", exact: "2.10.1"),
     ],
     targets: [
         .target(
@@ -21,7 +22,12 @@ let package = Package(
                 .product(name: "HuggingFace", package: "swift-huggingface"),
             ],
             swiftSettings: swiftSettings),
-        .executableTarget(name: "MDReader", dependencies: ["MDReaderCore"], swiftSettings: swiftSettings),
+        .executableTarget(
+            name: "MDReader",
+            dependencies: ["MDReaderCore", .product(name: "Sparkle", package: "Sparkle")],
+            swiftSettings: swiftSettings,
+            // Sparkle.framework is embedded in Contents/Frameworks by Scripts/build.sh.
+            linkerSettings: [.unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])]),
         .testTarget(name: "MDReaderCoreTests", dependencies: ["MDReaderCore"], swiftSettings: swiftSettings),
     ]
 )
