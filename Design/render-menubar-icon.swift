@@ -9,16 +9,28 @@ let page = CGRect(x: 1.75, y: 1.75, width: 8.5, height: 14.5)
 let hash = CGRect(x: 3.85, y: 10.1, width: 4.3, height: 4.4)
 let textLines: [(y: CGFloat, width: CGFloat)] = [(6.75, 5), (4.0, 3.75)]
 
-func addHash(to context: CGContext) {
+/// The heading mark and lines of text as filled outlines, so they can be drawn on the outlined page
+/// or cut out of the solid one. (PDF has no "clear" blend mode, so cut-outs must be real geometry.)
+func details() -> CGPath {
+    let lines = CGMutablePath()
+    for line in textLines {
+        lines.move(to: CGPoint(x: page.minX + 2.25, y: line.y))
+        lines.addLine(to: CGPoint(x: page.minX + 2.25 + line.width - 1, y: line.y))
+    }
+
+    let mark = CGMutablePath()
     let inset: CGFloat = 1.25, slant: CGFloat = 0.45
     for x in [hash.minX + inset, hash.maxX - inset] {
-        context.move(to: CGPoint(x: x - slant, y: hash.minY))
-        context.addLine(to: CGPoint(x: x + slant, y: hash.maxY))
+        mark.move(to: CGPoint(x: x - slant, y: hash.minY))
+        mark.addLine(to: CGPoint(x: x + slant, y: hash.maxY))
     }
     for y in [hash.minY + inset, hash.maxY - inset] {
-        context.move(to: CGPoint(x: hash.minX, y: y))
-        context.addLine(to: CGPoint(x: hash.maxX, y: y))
+        mark.move(to: CGPoint(x: hash.minX, y: y))
+        mark.addLine(to: CGPoint(x: hash.maxX, y: y))
     }
+
+    return lines.copy(strokingWithWidth: lineWidth, lineCap: .round, lineJoin: .round, miterLimit: 10)
+        .union(mark.copy(strokingWithWidth: 1.15, lineCap: .round, lineJoin: .round, miterLimit: 10))
 }
 
 func draw(_ context: CGContext, playing: Bool) {
@@ -29,24 +41,14 @@ func draw(_ context: CGContext, playing: Bool) {
 
     let pagePath = CGPath(roundedRect: page, cornerWidth: 2, cornerHeight: 2, transform: nil)
     if playing {
-        // A solid page with the lines of text knocked out.
-        context.addPath(pagePath)
+        context.addPath(pagePath.subtracting(details()))
         context.fillPath()
-        context.setBlendMode(.clear)
     } else {
         context.addPath(pagePath)
         context.strokePath()
+        context.addPath(details())
+        context.fillPath()
     }
-    for line in textLines {
-        context.move(to: CGPoint(x: page.minX + 2.25, y: line.y))
-        context.addLine(to: CGPoint(x: page.minX + 2.25 + line.width - 1, y: line.y))
-    }
-    context.strokePath()
-    context.setLineWidth(1.15)
-    addHash(to: context)
-    context.strokePath()
-    context.setLineWidth(lineWidth)
-    context.setBlendMode(.normal)
 
     // Two sound waves off the page's right edge.
     let center = CGPoint(x: page.maxX + 0.25, y: page.midY)
@@ -69,7 +71,7 @@ let arguments = CommandLine.arguments
 writePDF(to: arguments[1], playing: false)
 writePDF(to: arguments[2], playing: true)
 
-// Optional enlarged preview of both states on a light and a dark menu bar.
+// Optional enlarged preview of both generated PDFs on a light and a dark menu bar.
 if arguments.count > 3 {
     let scale: CGFloat = 8
     let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(size.width * scale * 4), pixelsHigh: Int(size.height * scale * 2),
@@ -85,7 +87,8 @@ if arguments.count > 3 {
             context.translateBy(x: (CGFloat(column) * 2 + 0.5) * size.width * scale, y: CGFloat(1 - row) * size.height * scale)
             context.scaleBy(x: scale, y: scale)
             context.beginTransparencyLayer(auxiliaryInfo: nil)
-            draw(context, playing: playing)
+            let pdf = CGPDFDocument(URL(fileURLWithPath: arguments[playing ? 2 : 1]) as CFURL)!
+            context.drawPDFPage(pdf.page(at: 1)!)
             context.setBlendMode(.sourceIn)
             context.setFillColor(row == 0 ? CGColor(gray: 0, alpha: 0.85) : CGColor(gray: 1, alpha: 0.9))
             context.fill(CGRect(origin: .zero, size: size))
