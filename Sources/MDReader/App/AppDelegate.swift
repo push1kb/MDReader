@@ -15,6 +15,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if #unavailable(macOS 15.0) {
             DispatchQueue.main.async(execute: closeReaderWindow)
         }
+        if SelfTest.isRequested {
+            SelfTest.run(controller)
+        }
+        if Screenshot.isRequested {
+            Screenshot.render()
+        }
     }
 
     private func closeReaderWindow() {
