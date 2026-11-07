@@ -6,7 +6,7 @@ struct MDReaderApp: App {
     private let controller = PlayerController.shared
 
     var body: some Scene {
-        MenuBarExtra("MDReader", systemImage: controller.isPlaying ? "speaker.wave.2.fill" : "speaker.wave.2") {
+        MenuBarExtra("MDReader", image: controller.isPlaying ? "MenuBarIconPlaying" : "MenuBarIcon") {
             ReaderView(controller: controller, presentation: .panel)
         }
         .menuBarExtraStyle(.window)
