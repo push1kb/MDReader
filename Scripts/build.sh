@@ -9,6 +9,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# Read the whole script before running it, so editing it mid-run can't derail the run.
+{
+
 OVERRIDES=()
 if [[ "${ADHOC:-}" == 1 ]]; then
   # The hardened runtime's library validation refuses ad-hoc signed frameworks such as Sparkle.
@@ -34,3 +37,5 @@ if [[ "${1:-}" != "--no-launch" ]]; then
   open dist/MDReader.app
   echo "Opened — look for the MDReader page icon in the menu bar."
 fi
+exit
+}

@@ -13,6 +13,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# Read the whole script before running it, so editing it mid-run can't derail the run.
+{
+
 PROFILE="${NOTARY_PROFILE:-MDReader}"
 REPO="push1kb/MDReader"
 ARCHIVE="dist/MDReader.xcarchive"
@@ -63,3 +66,5 @@ echo
 echo "Release ready: $ZIP and dist/appcast.xml"
 echo "Publish it with:"
 echo "  gh release create v$VERSION $ZIP dist/appcast.xml --repo $REPO --title \"MDReader $VERSION\" --notes \"…\""
+exit
+}
