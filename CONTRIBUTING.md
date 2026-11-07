@@ -24,8 +24,9 @@ To build from the terminal instead:
 ADHOC=1 ./Scripts/build.sh      # without a Developer ID certificate
 ```
 
-Debug builds sign with an Apple Development certificate and Release builds with Developer ID, both
-for team K8AK936KU6. If you're building on another team, change the team in Signing & Capabilities.
+Builds sign automatically with an Apple Development certificate for team K8AK936KU6; the Developer ID
+signature is applied when `release.sh` exports a release. If you're on another team, change the team
+in Signing & Capabilities.
 
 ## Testing
 
